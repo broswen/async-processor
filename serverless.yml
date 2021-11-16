@@ -1,0 +1,84 @@
+service: async-processor
+frameworkVersion: "2 || 3"
+
+plugins:
+  - serverless-plugin-typescript
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  memorySize: 128
+  timeout: 3
+  lambdaHashingVersion: "20201221"
+
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+          Resource:
+            - !GetAtt RequestTable.Arn
+        - Effect: "Allow"
+          Action:
+            - sqs:SendMessage
+          Resource:
+            - !GetAtt RequestQueue.Arn
+            - !GetAtt RequestDLQ.Arn
+
+  environment:
+    REQUESTQUEUE: !Ref RequestQueue
+    REQUESTDLQ: !Ref RequestDLQ
+    REQUESTTABLE: !Ref RequestTable
+
+functions:
+  postRequest:
+    handler: src/lambdas/postRequest.handler
+    events:
+      - httpApi:
+          path: /request
+          method: post
+  getStatus:
+    handler: src/lambdas/getStatus.handler
+    events:
+      - httpApi:
+          path: /request/{id}
+          method: get
+  getResult:
+    handler: src/lambdas/getResult.handler
+    events:
+      - httpApi:
+          path: /request/{id}/result
+          method: get
+  processRequest:
+    handler: src/lambdas/processRequest.handler
+    events:
+      - sqs:
+          arn: !GetAtt RequestQueue.Arn
+          batchSize: 10
+          maximumRetryAttempts: 10
+
+resources:
+  Resources:
+    RequestQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        RedrivePolicy:
+          maxReceiveCount: 1
+          deadLetterTargetArn: !GetAtt RequestDLQ.Arn
+
+    RequestDLQ:
+      Type: AWS::SQS::Queue
+
+    RequestTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
