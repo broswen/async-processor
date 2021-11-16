@@ -16,9 +16,17 @@ module.exports.handler = async (event: APIGatewayProxyEventV2) => {
     return createError("body is undefined", 400)
   }
 
-  // TODO do some json validation for the processing request
+  let body: any
+  // parse body into json
+  try {
+    body = JSON.parse(event.body)
+  } catch (err) {
+    console.error(err)
+    return createError("Bad Request", 400)
+  }
 
-  const request: ProcessingItemRequest = JSON.parse(event.body) as ProcessingItemRequest
+  // TODO validate json schema
+  const request: ProcessingItemRequest = body as ProcessingItemRequest
 
   const item = await itemService.CreateRequest(request)
 
