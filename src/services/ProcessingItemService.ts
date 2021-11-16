@@ -9,7 +9,7 @@ export default class ProcessingItemService {
     this.ddbClient = ddbClient
   }
 
-  async GetItem(id: string): Promise<ProcessingItem> {
+  async GetItem(id: string): Promise<ProcessingItem | undefined> {
     const getItemInput: GetItemCommandInput = {
       TableName: process.env.REQUESTTABLE,
       Key: {
@@ -23,7 +23,7 @@ export default class ProcessingItemService {
     try {
       const getItemResult = await this.ddbClient.send(new GetItemCommand(getItemInput))
       if (getItemResult.Item === undefined) {
-        throw new Error('item not found')
+        return undefined
       }
       item = unmarshall(getItemResult.Item) as ProcessingItem
 

@@ -15,7 +15,7 @@ module.exports.handler = async (event: APIGatewayProxyEventV2) => {
   }
 
   const requestId = event.pathParameters['id']
-  let item: ProcessingItem
+  let item: ProcessingItem | undefined
   try {
     item = await itemService.GetItem(requestId)
   } catch (err) {
