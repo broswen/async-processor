@@ -3,10 +3,11 @@
 import { DynamoDBClient, UpdateItemCommand, UpdateItemCommandInput } from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SendMessageCommandInput, SQSClient } from "@aws-sdk/client-sqs";
 import { SQSEvent, SQSRecord } from "aws-lambda";
-import { ProcessingRequest } from "../models/models";
+import ProcessingItemService from "../services/ProcessingItemService";
 
 const sqsClient: SQSClient = new SQSClient({})
 const ddbClient: DynamoDBClient = new DynamoDBClient({})
+const itemService: ProcessingItemService = new ProcessingItemService(ddbClient)
 
 module.exports.handler = async (event: SQSEvent) => {
   // track failed requests
@@ -14,67 +15,47 @@ module.exports.handler = async (event: SQSEvent) => {
 
   for (let record of event.Records) {
 
-    // parse request into the event type
-    let request = JSON.parse(record.body) as ProcessingRequest
+    const requestId = record.body
+    const item = await itemService.GetItem(requestId)
 
     // update dynamodb status to processing
-    await setStatus(request.id, "processing")
+    item.status = "processing"
+    await itemService.UpdateItem(item)
 
-    // do some processing on the request
+    console.log(`processing request ${item.id}: '${item.name}' of type '${item.type}' for amount ${item.amount}`)
     // this is where the real business logic would take place
     // this can be a step function workflow to allow for longer and more complex processing flows
-    console.log(`processing request ${request.id}: '${request.name}' of type '${request.type}' for amount ${request.amount}`)
+    console.log(`finished processing ${item.id}`)
 
     // fail negative amounts as an example of failures
-    if (request.amount < 0) {
-      console.error(`request ${request.id} has negative amount`)
+    if (item.amount < 0) {
+      console.error(`request ${item.id} has negative amount`)
       failedRecords.push(record)
       // update dynamodb status to failed
-      await setStatus(request.id, "error")
+      item.status = "error"
+      item.result = "amount is negative"
+      await itemService.UpdateItem(item)
       continue
     }
 
     // update dynamodb status to complete
-    await setStatus(request.id, "complete")
-
+    item.status = "completed"
+    item.result = "some business result"
+    await itemService.UpdateItem(item)
   }
 
+  if (failedRecords.length === event.Records.length) {
+    throw new Error('all items failed, failing batch')
+  }
   // return failed requests to dead letter queue
   if (failedRecords) {
     for (let record of failedRecords) {
-      await failMessage(record.body)
+      const sendMessageInput: SendMessageCommandInput = {
+        QueueUrl: process.env.REQUESTDLQ,
+        MessageBody: JSON.stringify(record.body)
+      }
+      await sqsClient.send(new SendMessageCommand(sendMessageInput))
     }
   }
-
   return
 };
-
-async function setStatus(id: string, status: string) {
-  const updateItemInput: UpdateItemCommandInput = {
-    TableName: process.env.REQUESTTABLE,
-    Key: {
-      PK: {
-        S: id
-      },
-    },
-    UpdateExpression: "SET #s = :s",
-    ExpressionAttributeNames: {
-      "#s": "status"
-    },
-    ExpressionAttributeValues: {
-      ":s": {
-        S: status
-      }
-    }
-  }
-
-  await ddbClient.send(new UpdateItemCommand(updateItemInput))
-}
-
-async function failMessage(message: string) {
-  const sendMessageInput: SendMessageCommandInput = {
-    QueueUrl: process.env.REQUESTDLQ,
-    MessageBody: JSON.stringify(message)
-  }
-  await sqsClient.send(new SendMessageCommand(sendMessageInput))
-}

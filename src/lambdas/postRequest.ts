@@ -3,12 +3,13 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SendMessageCommandInput, SQSClient } from "@aws-sdk/client-sqs";
 import { APIGatewayProxyEventV2 } from "aws-lambda";
-import KSUID from "ksuid";
-import { ProcessingRequest } from "../models/models";
 import { createError } from "../util/util";
+import ProcessingItemService from "../services/ProcessingItemService";
+import { ProcessingItemRequest } from "../models/models";
 
 const sqsClient: SQSClient = new SQSClient({})
 const ddbClient: DynamoDBClient = new DynamoDBClient({})
+const itemService: ProcessingItemService = new ProcessingItemService(ddbClient)
 
 module.exports.handler = async (event: APIGatewayProxyEventV2) => {
   if (event.body === undefined) {
@@ -17,14 +18,14 @@ module.exports.handler = async (event: APIGatewayProxyEventV2) => {
 
   // TODO do some json validation for the processing request
 
-  const request: ProcessingRequest = JSON.parse(event.body) as ProcessingRequest
-  const id = (await KSUID.random()).string
-  request.id = id
+  const request: ProcessingItemRequest = JSON.parse(event.body) as ProcessingItemRequest
+
+  const item = await itemService.CreateRequest(request)
 
   // submit to sqs
   const sendMessageInput: SendMessageCommandInput = {
     QueueUrl: process.env.REQUESTQUEUE,
-    MessageBody: JSON.stringify(request)
+    MessageBody: item.id
   }
 
   try {
@@ -38,7 +39,7 @@ module.exports.handler = async (event: APIGatewayProxyEventV2) => {
     statusCode: 200,
     body: JSON.stringify(
       {
-        id,
+        id: item.id,
       }
     )
   };

@@ -46,14 +46,9 @@ functions:
       - httpApi:
           path: /request/{id}
           method: get
-  getResult:
-    handler: src/lambdas/getResult.handler
-    events:
-      - httpApi:
-          path: /request/{id}/result
-          method: get
   processRequest:
     handler: src/lambdas/processRequest.handler
+    timeout: 30
     events:
       - sqs:
           arn: !GetAtt RequestQueue.Arn
@@ -77,8 +72,8 @@ resources:
       Properties:
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
-          - AttributeName: PK
+          - AttributeName: id
             AttributeType: S
         KeySchema:
-          - AttributeName: PK
+          - AttributeName: id
             KeyType: HASH
