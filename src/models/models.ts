@@ -21,8 +21,8 @@ export interface ProcessingItem {
 export const ProcessingRequestSchema: JSONSchemaType<ProcessingItemRequest> = {
   type: "object",
   properties: {
-    type: { type: "string", minLingth: 1 },
-    name: { type: "string", minLingth: 1 },
+    type: { type: "string", minLength: 1 },
+    name: { type: "string", minLength: 1 },
     amount: { type: "number" },
   },
   required: ["type", "name", "amount"],
