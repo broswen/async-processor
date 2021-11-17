@@ -5,7 +5,11 @@ import { SendMessageCommand, SendMessageCommandInput, SQSClient } from "@aws-sdk
 import { APIGatewayProxyEventV2 } from "aws-lambda";
 import { createError } from "../util/util";
 import ProcessingItemService from "../services/ProcessingItemService";
-import { ProcessingItemRequest } from "../models/models";
+import { ProcessingItemRequest, ProcessingRequestSchema } from "../models/models";
+
+import Ajv from 'ajv'
+const ajv = new Ajv()
+const validate = ajv.compile(ProcessingRequestSchema)
 
 const sqsClient: SQSClient = new SQSClient({})
 const ddbClient: DynamoDBClient = new DynamoDBClient({})
@@ -23,6 +27,12 @@ module.exports.handler = async (event: APIGatewayProxyEventV2) => {
   } catch (err) {
     console.error(err)
     return createError("Bad Request", 400)
+  }
+
+  if (!validate(body)) {
+    // join list of error messages
+    const errors = validate.errors?.map(err => `${err.dataPath} ${err.message}`).join(", ") ?? "Bad Request"
+    return createError(errors, 400)
   }
 
   // TODO validate json schema

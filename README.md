@@ -12,4 +12,4 @@ An API pattern that uses SQS queues and a DynamoDB table to track requests and p
 
 - [x] create Request client to centralize API operations
 - [x] use custom dynamodb table schema
-- [ ] use AJV for object/request validation
+- [x] use AJV for object/request validation
