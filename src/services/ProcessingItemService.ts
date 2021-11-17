@@ -1,7 +1,7 @@
-import { DynamoDBClient, GetItemCommand, GetItemCommandInput, ItemCollectionMetrics, PutItemCommand, PutItemCommandInput, UpdateItemCommand, UpdateItemCommandInput } from "@aws-sdk/client-dynamodb"
+import { DynamoDBClient, GetItemCommand, GetItemCommandInput, PutItemCommand, PutItemCommandInput, UpdateItemCommand, UpdateItemCommandInput } from "@aws-sdk/client-dynamodb"
 import KSUID from "ksuid";
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb'
-import { DynamoDBProcessingItemSchema, ProcessingItem, ProcessingItemRequest } from "../models/models"
+import { ProcessingItem, ProcessingItemRequest } from "../models/models"
 
 export default class ProcessingItemService {
   private ddbClient: DynamoDBClient
@@ -19,17 +19,12 @@ export default class ProcessingItemService {
       }
     }
 
-    let item: ProcessingItem
-    try {
-      const getItemResult = await this.ddbClient.send(new GetItemCommand(getItemInput))
-      if (getItemResult.Item === undefined) {
-        return undefined
-      }
-      item = unmarshall(getItemResult.Item) as ProcessingItem
-
-    } catch (err) {
-      throw err
+    const getItemResult = await this.ddbClient.send(new GetItemCommand(getItemInput))
+    if (getItemResult.Item === undefined) {
+      return undefined
     }
+    const item = unmarshall(getItemResult.Item) as ProcessingItem
+
     return item
   }
 

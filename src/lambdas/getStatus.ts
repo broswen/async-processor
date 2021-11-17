@@ -1,6 +1,6 @@
 "use strict";
 
-import { DynamoDBClient, GetItemCommand, GetItemCommandInput } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { APIGatewayProxyEventV2 } from "aws-lambda";
 import { ProcessingItem } from "../models/models";
 import ProcessingItemService from "../services/ProcessingItemService";

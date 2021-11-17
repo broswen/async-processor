@@ -1,6 +1,6 @@
 "use strict";
 
-import { DynamoDBClient, UpdateItemCommand, UpdateItemCommandInput } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SendMessageCommandInput, SQSClient } from "@aws-sdk/client-sqs";
 import { SQSEvent, SQSRecord } from "aws-lambda";
 import ProcessingItemService from "../services/ProcessingItemService";
@@ -13,10 +13,15 @@ module.exports.handler = async (event: SQSEvent) => {
   // track failed requests
   const failedRecords: SQSRecord[] = []
 
-  for (let record of event.Records) {
+  for (const record of event.Records) {
 
     const requestId = record.body
     const item = await itemService.GetItem(requestId)
+
+    if (item === undefined) {
+      console.error(`item not found for ${requestId}`)
+      continue
+    }
 
     // update dynamodb status to processing
     item.status = "processing"
@@ -49,7 +54,7 @@ module.exports.handler = async (event: SQSEvent) => {
   }
   // return failed requests to dead letter queue
   if (failedRecords) {
-    for (let record of failedRecords) {
+    for (const record of failedRecords) {
       const sendMessageInput: SendMessageCommandInput = {
         QueueUrl: process.env.REQUESTDLQ,
         MessageBody: JSON.stringify(record.body)

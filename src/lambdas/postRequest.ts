@@ -16,7 +16,7 @@ module.exports.handler = async (event: APIGatewayProxyEventV2) => {
     return createError("body is undefined", 400)
   }
 
-  let body: any
+  let body: object
   // parse body into json
   try {
     body = JSON.parse(event.body)
@@ -37,7 +37,7 @@ module.exports.handler = async (event: APIGatewayProxyEventV2) => {
   }
 
   try {
-    let result = await sqsClient.send(new SendMessageCommand(sendMessageInput))
+    await sqsClient.send(new SendMessageCommand(sendMessageInput))
   } catch (err: unknown) {
     console.error(err)
     return createError("Internal Server Error", 500)
