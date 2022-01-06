@@ -36,30 +36,36 @@ provider:
 functions:
   health:
     handler: src/lambdas/health.handler
+    reservedConcurrency: 2
     events:
       - httpApi:
           path: /health
           method: get
   postRequest:
     handler: src/lambdas/postRequest.handler
+    reservedConcurrency: 2
     events:
       - httpApi:
           path: /request
           method: post
   getStatus:
     handler: src/lambdas/getStatus.handler
+    reservedConcurrency: 2
     events:
       - httpApi:
           path: /request/{id}
           method: get
   processRequest:
     handler: src/lambdas/processRequest.handler
+    reservedConcurrency: 1
     timeout: 30
     events:
       - sqs:
           arn: !GetAtt RequestQueue.Arn
           batchSize: 10
-          maximumRetryAttempts: 10
+          maximumRetryAttempts: 1
+          maximumBatchingWindow: 10
+          functionResponseType: ReportBatchItemFailures
 
 resources:
   Resources:
