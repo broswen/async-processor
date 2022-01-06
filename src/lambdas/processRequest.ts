@@ -49,18 +49,19 @@ module.exports.handler = async (event: SQSEvent) => {
     await itemService.UpdateItem(item)
   }
 
+  console.log(`${failedRecords.length}/${event.Records.length} records failed`)
   if (failedRecords.length === event.Records.length) {
-    throw new Error('all items failed, failing batch')
+    throw new Error('all records failed')
   }
-  // return failed requests to dead letter queue
-  if (failedRecords) {
-    for (const record of failedRecords) {
-      const sendMessageInput: SendMessageCommandInput = {
-        QueueUrl: process.env.REQUESTDLQ,
-        MessageBody: JSON.stringify(record.body)
-      }
-      await sqsClient.send(new SendMessageCommand(sendMessageInput))
-    }
+
+  // use new partial batch failure
+  // return message IDs of failed records
+  // {
+  //   batchItemFailures: [
+  //     { itemIdentifier: 'messageId'},
+  //   ]
+  // }
+  return {
+    batchItemFailures: failedRecords.map(record => ({ itemIdentifier: record.messageId }))
   }
-  return
 };
